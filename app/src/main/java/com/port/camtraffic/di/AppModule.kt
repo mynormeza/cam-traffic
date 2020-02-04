@@ -1,6 +1,9 @@
 package com.port.camtraffic.di
 
+import android.app.Application
+import androidx.room.Room
 import com.port.camtraffic.api.WebApi
+import com.port.camtraffic.db.AppDatabase
 import dagger.Module
 import dagger.Provides
 import retrofit2.Retrofit
@@ -18,5 +21,11 @@ object AppModule {
         .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
         .build()
         .create(WebApi::class.java)
+
+    @Provides @Singleton @JvmStatic
+    fun providesAppDatabase(app: Application): AppDatabase = Room
+        .databaseBuilder(app, AppDatabase::class.java, "traffic.db")
+        .fallbackToDestructiveMigration()
+        .build()
 
 }

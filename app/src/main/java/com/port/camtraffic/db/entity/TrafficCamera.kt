@@ -1,7 +1,11 @@
-package com.port.camtraffic
+package com.port.camtraffic.db.entity
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "traffic_cameras")
 class TrafficCamera (
-    val id: String,
+    @PrimaryKey val id: String,
     val direction: String,
     val image: String,
     val region: String,
