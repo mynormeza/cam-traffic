@@ -8,19 +8,23 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
+import com.port.camtraffic.repositories.NetworkRepository
 import dagger.android.AndroidInjection
 import dagger.android.AndroidInjector
 import dagger.android.DispatchingAndroidInjector
 import dagger.android.HasAndroidInjector
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 
 import kotlinx.android.synthetic.main.activity_main.*
+import timber.log.Timber
 import javax.inject.Inject
 
 class MainActivity : AppCompatActivity(), HasAndroidInjector{
 
     @Inject lateinit var dispatchingAndroidInjector: DispatchingAndroidInjector<Any>
     private lateinit var appBarConfiguration: AppBarConfiguration
-
+    @Inject lateinit var network: NetworkRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AndroidInjection.inject(this)
@@ -30,6 +34,16 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector{
         appBarConfiguration = AppBarConfiguration(setOf(R.id.mainFragment))
         setSupportActionBar(toolbar)
         setupActionBarWithNavController(navController, appBarConfiguration)
+
+        val disposable = network
+            .sincronize()
+            .subscribeOn(Schedulers.io())
+            .subscribeOn(AndroidSchedulers.mainThread())
+            .subscribe { isSynced, error ->
+                if (isSynced){
+                    Timber.i("synced")
+                }
+            }
     }
 
     override fun onSupportNavigateUp(): Boolean {
