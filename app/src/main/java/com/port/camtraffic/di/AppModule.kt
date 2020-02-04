@@ -12,7 +12,7 @@ import javax.inject.Singleton
 object AppModule {
 
     @Provides @Singleton
-    fun providesWebApi() = Retrofit.Builder()
+    fun providesWebApi(): WebApi = Retrofit.Builder()
         .baseUrl("https://javieraragon.carto.com/api/v2/")
         .addConverterFactory(GsonConverterFactory.create())
         .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
