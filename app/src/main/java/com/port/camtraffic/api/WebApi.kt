@@ -7,5 +7,5 @@ import retrofit2.http.Query
 
 interface WebApi {
     @GET("sql")
-    fun loadPio(@Query("q") q: String): Single<ApiResponse<TrafficCamera>>
+    fun loadPoi(@Query("q") q: String): Single<ApiResponse<TrafficCamera>>
 }

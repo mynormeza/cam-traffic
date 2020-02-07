@@ -12,6 +12,7 @@ import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
@@ -71,10 +72,21 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener {
         return root
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        viewModel.syncState.observe(this, Observer {
+            if (it){
+                Toast.makeText(activity,getString(R.string.data_sync), Toast.LENGTH_SHORT).show()
+            } else {
+                findNavController().navigate(R.id.sync_fragment)
+            }
+        })
+    }
+
     override fun onMapReady(mapboxMap: MapboxMap) {
         this.mapboxMap = mapboxMap
 
-        viewModel.pioList.observe(this, Observer {
+        viewModel.poiList.observe(this, Observer {
             setPios(it)
         })
     }
@@ -95,7 +107,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener {
             val circleManager =  CircleManager(mapView!!, mapboxMap, style)
             circleManager.addClickListener {
                 val pio = it.data?.asJsonObject?.toClassObject(::toTrafficCamera)
-                bottomSheetBinding?.pio = pio
+                bottomSheetBinding?.poi = pio
                 bottomSheetBinding?.executePendingBindings()
                 it.circleRadius = 12f
                 circleManager.update(it)

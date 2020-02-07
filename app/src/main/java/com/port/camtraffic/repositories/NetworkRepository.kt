@@ -12,8 +12,8 @@ class NetworkRepository @Inject constructor(
     private val appDatabase: AppDatabase,
     private val api: WebApi
 ) {
-    fun sincronize( ): Single<Boolean>{
-        val trafficCameras = api.loadPio("SELECT id, direction, href as image, region, title, view as description, ST_X(the_geom) as longitude, ST_Y(the_geom) as latitude FROM ios_test")
+    fun synchronize( ): Single<Boolean>{
+        val trafficCameras = api.loadPoi("SELECT id, direction, href as image, region, title, view as description, ST_X(the_geom) as longitude, ST_Y(the_geom) as latitude FROM ios_test")
 
         return trafficCameras.flatMap {
             Single.create<Boolean> {emitter ->
