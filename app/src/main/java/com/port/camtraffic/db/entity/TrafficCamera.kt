@@ -26,6 +26,8 @@ class TrafficCamera (
         obj.addProperty("region", region)
         obj.addProperty("title", title)
         obj.addProperty("description", description)
+        obj.addProperty("latitude", latitude)
+        obj.addProperty("longitude", longitude)
         return obj
     }
 }

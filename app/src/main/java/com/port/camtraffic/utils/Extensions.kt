@@ -14,6 +14,9 @@ object FactoryFunctions {
         json.get("image").asString,
         json.get("region").asString,
         json.get("title").asString,
-        json.get("description").asString
+        json.get("description").asString,
+        json.get("longitude").asFloat,
+        json.get("latitude").asFloat
+
     )
 }

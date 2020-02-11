@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector{
         setSupportActionBar(toolbar)
         setupActionBarWithNavController(navController, appBarConfiguration)
         visibilityNavElements(navController)
+        supportActionBar?.setDisplayShowTitleEnabled(true)
     }
 
     override fun onSupportNavigateUp(): Boolean {
