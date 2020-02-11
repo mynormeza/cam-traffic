@@ -12,4 +12,6 @@
     <string name="finish">Finish</string>
     <string name="nav_hint">Choose starting traffic camera</string>
     <string name="route_distance">%1$smin (%2$sm)</string>
+    <string name="current_location">Your location</string>
+    <string name="navigating">you are navigating</string>
 </resources>

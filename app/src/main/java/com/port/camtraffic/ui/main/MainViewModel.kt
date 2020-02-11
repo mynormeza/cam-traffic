@@ -19,4 +19,13 @@ class MainViewModel @Inject constructor(
     var origin: TrafficCamera? = null
     var destination: TrafficCamera? = null
     var preRouteMode = false
+
+    fun clearRoute() {
+        origin = null
+        destination = null
+        destinationCircle = null
+        originCircle = null
+    }
+
+    fun isRouteValid() = origin != null && destination != null
 }
