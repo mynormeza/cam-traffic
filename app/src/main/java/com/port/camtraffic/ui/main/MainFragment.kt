@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.Looper
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -18,6 +19,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.mapbox.android.core.location.*
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.api.directions.v5.models.DirectionsResponse
@@ -40,10 +42,14 @@ import com.mapbox.mapboxsdk.style.layers.Property.VISIBLE
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.visibility
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
+import com.mapbox.services.android.navigation.ui.v5.camera.NavigationCamera
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute
+import com.mapbox.services.android.navigation.v5.navigation.camera.Camera
+import com.mapbox.services.android.navigation.v5.navigation.camera.RouteInformation
 import com.mapbox.services.android.navigation.v5.routeprogress.ProgressChangeListener
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress
+import com.port.camtraffic.MainActivity
 import com.port.camtraffic.R
 import com.port.camtraffic.databinding.BottomSheetBinding
 import com.port.camtraffic.databinding.RouteViewBinding
@@ -55,6 +61,8 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import timber.log.Timber
+import java.lang.Exception
+import java.lang.ref.WeakReference
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -81,6 +89,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     private lateinit var locationComponent: LocationComponent
     private lateinit var routeNavigation: MapboxNavigation
     private var gpsEnabled = false
+    private var isNavigating = false
 
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
@@ -118,6 +127,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         toolbar.visibility = View.GONE
 
         bottomSheetBinding.startNav?.setOnClickListener {
+            isNavigating = true
             routeNavigation.addProgressChangeListener(this)
             routeViewBinding.navRouteActive = true
             bottomSheetBinding.routeDetails?.visibility  = View.GONE
@@ -130,7 +140,6 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
             bottomSheetBinding.poiDetails?.visibility = View.VISIBLE
             bottomSheetBinding.finish?.visibility = View.GONE
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
-            clearAll()
         }
         bottomSheetBinding.poiDirections?.setOnClickListener {
             directionsClick()
@@ -216,9 +225,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     }
 
     override fun onProgressChange(location: Location?, routeProgress: RouteProgress?) {
-        routeProgress?.let {
-            updateRoute(it.directionsRoute()?.geometry()!!)
-        }
+        getRoute(Point.fromLngLat(location?.longitude!!,location.latitude))
     }
 
     override fun onFailure(call: Call<DirectionsResponse>, t: Throwable) {
@@ -230,7 +237,13 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         response: Response<DirectionsResponse>
     ) {
         response.body()?.let {
-            setRoute(it)
+            val routes = it.routes()
+            if (routes.isNotEmpty()){
+                val route = routes[0]
+                if (!isNavigating) routeNavigation.startNavigation(route)
+                setRoute(it)
+
+            }
         }
     }
 
@@ -296,16 +309,12 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED)
         }
         if (viewModel.isRouteValid()) {
-            getRoute()
+            val ori=  Point.fromLngLat(viewModel.origin?.longitude!!.toDouble(), viewModel.origin?.latitude!!.toDouble())
+            getRoute(ori)
         }
     }
 
-    private fun getRoute() {
-        val ori = if (gpsEnabled) {
-            getCurrentLocation()
-        } else {
-            Point.fromLngLat(viewModel.origin?.longitude!!.toDouble(), viewModel.origin?.latitude!!.toDouble())
-        }
+    private fun getRoute(ori: Point) {
         val des = Point.fromLngLat(viewModel.destination?.longitude!!.toDouble(), viewModel.destination?.latitude!!.toDouble())
 
         NavigationRoute.builder(context)
@@ -320,7 +329,8 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         viewModel.preRouteMode = true
         gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
         if (gpsEnabled) {
-            getRoute()
+            getRoute(getCurrentLocation())
+            routeLayer.setProperties(visibility(VISIBLE))
             routeViewBinding.origin = getString(R.string.current_location)
         }
         bottomSheetBinding.poiDetails?.visibility = View.GONE
@@ -353,6 +363,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     }
 
     private fun clearAll() {
+        isNavigating = false
         toolbar.visibility = View.GONE
         viewModel.originCircle?.let {
             it.circleRadius = 8f
@@ -373,24 +384,23 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     }
 
     private fun setRoute(directionsResponse: DirectionsResponse){
-        routeLayer.setProperties(visibility(VISIBLE))
         val routes = directionsResponse.routes()
         if (routes.isNotEmpty()) {
             val route = routes[0]
-            val distance = route.distance().toString()
-            val duration = TimeUnit.SECONDS.toMinutes(route.duration()?.toLong()!!).toString()
-            bottomSheetBinding.distance = getString(R.string.route_distance, duration, distance)
-            bottomSheetBinding.hint?.visibility = View.GONE
-            bottomSheetBinding.routeDetails?.visibility = View.VISIBLE
-            bottomSheetBinding.startNav?.isEnabled = gpsEnabled
+            if (!isNavigating) {
+                val distance = route.distance().toString()
+                val duration = TimeUnit.SECONDS.toMinutes(route.duration()?.toLong()!!).toString()
+                routeLayer.setProperties(visibility(VISIBLE))
+                bottomSheetBinding.distance = getString(R.string.route_distance, duration, distance)
+                bottomSheetBinding.hint?.visibility = View.GONE
+                bottomSheetBinding.routeDetails?.visibility = View.VISIBLE
+                bottomSheetBinding.startNav?.isEnabled = gpsEnabled
+            }
+
             route.geometry()?.let {
-                updateRoute(it)
+                val lineString = LineString.fromPolyline(it, Constants.PRECISION_6)
+                routeSource.setGeoJson(lineString)
             }
         }
-    }
-
-    private fun updateRoute(geom: String) {
-        val lineString = LineString.fromPolyline(geom, Constants.PRECISION_6)
-        routeSource.setGeoJson(lineString)
     }
 }

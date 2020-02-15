@@ -13,7 +13,7 @@ interface TrafficCameraDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(trafficCameras: List<TrafficCamera>)
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(trafficCamera: TrafficCamera)
 
     @Delete
