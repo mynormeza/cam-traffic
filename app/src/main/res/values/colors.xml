@@ -3,4 +3,6 @@
     <color name="colorPrimary">#FFF</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
+    <color name="lightBlue">#4287f5</color>
+    <color name="redMarker">#f54242</color>
 </resources>

@@ -4,11 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools">
     <data>
         <variable
-            name="poi"
-            type="com.port.camtraffic.db.entity.TrafficCamera" />
-        <variable
-            name="distance"
-            type="String" />
+            name="viewmodel"
+            type="com.port.camtraffic.ui.main.MainViewModel" />
     </data>
     <FrameLayout
         android:id="@+id/bottom_sheet"
@@ -24,14 +21,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="@dimen/default_margin"
-            tools:visibility="gone">
+            tools:visibility="@{viewmodel.poiDetailsVisibility}">
 
             <TextView
                 android:id="@+id/poi_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingBottom="@dimen/global_sm_separator"
-                android:text="@{poi.title}"
+                android:text="@{viewmodel.destination.title}"
                 android:textSize="@dimen/title_details"
                 android:textStyle="bold"
                 app:layout_constrainedWidth="true"
@@ -46,7 +43,7 @@
                 android:id="@+id/poi_description"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@{poi.description}"
+                android:text="@{viewmodel.destination.description}"
                 android:paddingTop="@dimen/global_sm_separator"
                 android:paddingBottom="@dimen/global_sm_separator"
                 app:layout_constrainedWidth="true"
@@ -63,7 +60,7 @@
                 android:layout_height="wrap_content"
                 android:paddingTop="@dimen/global_sm_separator"
                 android:paddingBottom="@dimen/global_sm_separator"
-                android:text="@{poi.region}"
+                android:text="@{viewmodel.destination.region}"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/poi_description"
                 tools:text="Region"/>
@@ -98,30 +95,31 @@
             android:padding="@dimen/default_margin"
             android:textStyle="bold"
             android:text="@string/nav_hint"
-            android:visibility="gone"/>
+            android:visibility="@{viewmodel.routeHintVisibity}"/>
         <LinearLayout
             android:id="@+id/route_details"
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="@dimen/default_margin"
-            android:visibility="gone"
+            android:visibility="@{viewmodel.routeDetailsVisibility}"
             tools:visibility="visible">
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@{poi.title}"
+                android:text="@{viewmodel.destination.title}"
                 tools:text="TESTI"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@{distance}"
+                android:text="@{viewmodel.distance}"
                 tools:text="TEST2"/>
             <Button
                 android:id="@+id/start_nav"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/start"
+                android:enabled="@{viewmodel.startBtnEnabled}"
                 android:layout_gravity="center_horizontal"/>
         </LinearLayout>
         <Button
@@ -131,7 +129,7 @@
             android:layout_height="wrap_content"
             android:text="@string/finish"
             android:layout_gravity="center_horizontal"
-            android:visibility="gone"/>
+            android:visibility="@{viewmodel.navigatingVisibility}"/>
     </FrameLayout>
 
 </layout>

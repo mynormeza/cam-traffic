@@ -5,24 +5,24 @@ import android.graphics.Color
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
-import android.os.Looper
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
+import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.mapbox.android.core.location.*
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.api.directions.v5.models.DirectionsResponse
+import com.mapbox.api.directions.v5.models.DirectionsRoute
 import com.mapbox.core.constants.Constants
 import com.mapbox.geojson.*
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -42,27 +42,22 @@ import com.mapbox.mapboxsdk.style.layers.Property.VISIBLE
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.visibility
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
-import com.mapbox.services.android.navigation.ui.v5.camera.NavigationCamera
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute
-import com.mapbox.services.android.navigation.v5.navigation.camera.Camera
-import com.mapbox.services.android.navigation.v5.navigation.camera.RouteInformation
 import com.mapbox.services.android.navigation.v5.routeprogress.ProgressChangeListener
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress
-import com.port.camtraffic.MainActivity
 import com.port.camtraffic.R
 import com.port.camtraffic.databinding.BottomSheetBinding
 import com.port.camtraffic.databinding.RouteViewBinding
 import com.port.camtraffic.db.entity.TrafficCamera
+import com.port.camtraffic.extensions.toClassObject
+import com.port.camtraffic.extensions.toast
 import com.port.camtraffic.utils.FactoryFunctions.toTrafficCamera
-import com.port.camtraffic.utils.toClassObject
 import dagger.android.support.AndroidSupportInjection
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import timber.log.Timber
-import java.lang.Exception
-import java.lang.ref.WeakReference
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -88,8 +83,8 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     private lateinit var routeLayer: LineLayer
     private lateinit var locationComponent: LocationComponent
     private lateinit var routeNavigation: MapboxNavigation
+    private lateinit var currentRoute: DirectionsRoute
     private var gpsEnabled = false
-    private var isNavigating = false
 
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
@@ -98,6 +93,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
         locationManager = activity?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         routeNavigation = MapboxNavigation(context!!, getString(R.string.mapbox_access_token))
     }
@@ -110,7 +106,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         val bottomSheetLayout = root.findViewById<FrameLayout>(R.id.bottom_sheet)
         toolbar = activity?.findViewById(R.id.toolbar)!!
         bottomSheetBinding = BottomSheetBinding.bind(bottomSheetLayout)
-        routeViewBinding = RouteViewBinding.bind(toolbar.findViewById(R.id.route_view))
+        routeViewBinding = DataBindingUtil.bind(toolbar.findViewById(R.id.route_view))!!
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout)
 
 
@@ -125,30 +121,29 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         val menuIcon = ContextCompat.getDrawable(context!!, R.drawable.ic_close)
         toolbar.navigationIcon = menuIcon
         toolbar.visibility = View.GONE
+        routeViewBinding.viewmodel = viewModel
+        routeViewBinding.executePendingBindings()
+        bottomSheetBinding.viewmodel = viewModel
+        bottomSheetBinding.executePendingBindings()
 
-        bottomSheetBinding.startNav?.setOnClickListener {
-            isNavigating = true
+        bottomSheetBinding.startNav.setOnClickListener {
             routeNavigation.addProgressChangeListener(this)
-            routeViewBinding.navRouteActive = true
-            bottomSheetBinding.routeDetails?.visibility  = View.GONE
-            bottomSheetBinding.hint?.visibility = View.GONE
-            bottomSheetBinding.finish?.visibility = View.VISIBLE
+            routeNavigation.startNavigation(currentRoute)
+            viewModel.routeState = RouteState.NAVIGATING
         }
-        bottomSheetBinding.finish?.setOnClickListener {
+        bottomSheetBinding.finish.setOnClickListener {
             routeNavigation.removeProgressChangeListener(null)
-            routeViewBinding.navRouteActive = false
-            bottomSheetBinding.poiDetails?.visibility = View.VISIBLE
-            bottomSheetBinding.finish?.visibility = View.GONE
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+            clearAll()
         }
-        bottomSheetBinding.poiDirections?.setOnClickListener {
+        bottomSheetBinding.poiDirections.setOnClickListener {
             directionsClick()
         }
         bottomSheetBehavior.addBottomSheetCallback( object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(bottomSheet: View, slideOffset: Float) {}
 
             override fun onStateChanged(bottomSheet: View, newState: Int) {
-                if ( newState == BottomSheetBehavior.STATE_COLLAPSED){
+                if (newState == BottomSheetBehavior.STATE_COLLAPSED){
                     clearAll()
                 }
             }
@@ -156,7 +151,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
 
         viewModel.syncState.observe(this, Observer {
             if (it){
-                Toast.makeText(activity,getString(R.string.data_sync), Toast.LENGTH_SHORT).show()
+                context?.toast(getString(R.string.data_sync))
             } else {
                 findNavController().navigate(R.id.sync_fragment)
             }
@@ -179,7 +174,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     }
 
     override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
-        Toast.makeText(activity, "You need permission", Toast.LENGTH_SHORT).show()
+        context?.toast(getString(R.string.explain_permission))
     }
 
     override fun onPermissionResult(granted: Boolean) {
@@ -188,7 +183,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
                 enableLocation(it)
             }
         }else {
-            Toast.makeText(activity, "You need permission 2", Toast.LENGTH_SHORT).show()
+            context?.toast(getString(R.string.permission))
             activity?.finish()
         }
     }
@@ -224,8 +219,19 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
 
     }
 
+    override fun onOptionsItemSelected(item: MenuItem)= when(item.itemId){
+        android.R.id.home -> {
+            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+            clearAll()
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
+    }
+
     override fun onProgressChange(location: Location?, routeProgress: RouteProgress?) {
-        getRoute(Point.fromLngLat(location?.longitude!!,location.latitude))
+        location?.let {
+            getRoute(Point.fromLngLat(it.longitude,it.latitude))
+        }
     }
 
     override fun onFailure(call: Call<DirectionsResponse>, t: Throwable) {
@@ -240,9 +246,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
             val routes = it.routes()
             if (routes.isNotEmpty()){
                 val route = routes[0]
-                if (!isNavigating) routeNavigation.startNavigation(route)
-                setRoute(it)
-
+                setRoute(route)
             }
         }
     }
@@ -273,22 +277,25 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
                 PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
                 PropertyFactory.lineWidth(5f),
-                PropertyFactory.lineColor(Color.parseColor("#e55e5e")))
+                PropertyFactory.lineColor(Color.parseColor("#4287f5")))
             style.addLayer(routeLayer)
         }
     }
 
     private fun poiClick(clickedCircle: Circle) {
-        gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        if (viewModel.preRouteMode && !gpsEnabled) {
-
+        if (viewModel.needsOriginPoint()) {
+            viewModel.origin = clickedCircle.data?.asJsonObject?.toClassObject(::toTrafficCamera)
+            if (viewModel.isOriginValid()) {
+                context?.toast(getString(R.string.origin_invalid))
+                viewModel.origin = null
+                return
+            }
             viewModel.originCircle?.let {circle ->
                 circle.circleRadius = 8f
                 circleManager.update(circle)
             }
             viewModel.originCircle = clickedCircle
-            viewModel.origin = clickedCircle.data?.asJsonObject?.toClassObject(::toTrafficCamera)
-            routeViewBinding.origin = viewModel.origin  ?.title
+
         }else {
             viewModel.destinationCircle?.let {circle ->
                 circle.circleRadius = 8f
@@ -296,54 +303,49 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
             }
             viewModel.destinationCircle = clickedCircle
             viewModel.destination = clickedCircle.data?.asJsonObject?.toClassObject(::toTrafficCamera)
-            routeViewBinding.destination = viewModel.destination?.title
-            routeViewBinding.executePendingBindings()
         }
 
-
-        bottomSheetBinding.poi = viewModel.destination
-        bottomSheetBinding.executePendingBindings()
         clickedCircle.circleRadius = 12f
         circleManager.update(clickedCircle)
-        if (bottomSheetBehavior.state != BottomSheetBehavior.STATE_EXPANDED) {
-            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED)
-        }
-        if (viewModel.isRouteValid()) {
-            val ori=  Point.fromLngLat(viewModel.origin?.longitude!!.toDouble(), viewModel.origin?.latitude!!.toDouble())
+
+        viewModel.origin?.let {
+            viewModel.routeState = RouteState.NO_GPS_ROUTE
+            val ori=  Point.fromLngLat(it.longitude.toDouble(), it.latitude.toDouble())
             getRoute(ori)
+        }
+
+        if (bottomSheetBehavior.state != BottomSheetBehavior.STATE_EXPANDED) {
+            bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
         }
     }
 
     private fun getRoute(ori: Point) {
-        val des = Point.fromLngLat(viewModel.destination?.longitude!!.toDouble(), viewModel.destination?.latitude!!.toDouble())
+        viewModel.destination?.let {
+            val des = Point.fromLngLat(it.longitude.toDouble(), it.latitude.toDouble())
 
-        NavigationRoute.builder(context)
-            .accessToken(getString(R.string.mapbox_access_token))
-            .origin(ori)
-            .destination(des)
-            .build()
-            .getRoute(this)
+            NavigationRoute.builder(context)
+                .accessToken(getString(R.string.mapbox_access_token))
+                .origin(ori)
+                .destination(des)
+                .build()
+                .getRoute(this)
+        }
     }
 
     private fun directionsClick() {
-        viewModel.preRouteMode = true
         gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        if (gpsEnabled) {
-            getRoute(getCurrentLocation())
-            routeLayer.setProperties(visibility(VISIBLE))
-            routeViewBinding.origin = getString(R.string.current_location)
-        }
-        bottomSheetBinding.poiDetails?.visibility = View.GONE
         viewModel.destination?.let {
             if (gpsEnabled){
-                bottomSheetBinding.routeDetails?.visibility  = View.VISIBLE
+                getCurrentLocation()?.let {
+                    getRoute(it)
+                }
+                routeLayer.setProperties(visibility(VISIBLE))
+                viewModel.routeState = RouteState.GPS_PRE_ROUTE
             }else {
-                bottomSheetBinding.hint?.visibility = View.VISIBLE
+                viewModel.routeState = RouteState.NO_GPS_PRE_ROUTE
             }
-            routeViewBinding.destination = it.title
         }
         toolbar.visibility = View.VISIBLE
-        routeViewBinding.executePendingBindings()
     }
 
     private fun enableLocation(loadedStyle: Style) {
@@ -359,11 +361,10 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
             permissionManager = PermissionsManager(this)
             permissionManager.requestLocationPermissions(activity)
         }
-
     }
 
     private fun clearAll() {
-        isNavigating = false
+        routeNavigation.stopNavigation()
         toolbar.visibility = View.GONE
         viewModel.originCircle?.let {
             it.circleRadius = 8f
@@ -377,30 +378,26 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         viewModel.clearRoute()
     }
 
-    private fun getCurrentLocation(): Point {
+    private fun getCurrentLocation(): Point? {
         return locationComponent.lastKnownLocation?.let {
             Point.fromLngLat(it.longitude, it.latitude)
-        }!!
+        }
     }
 
-    private fun setRoute(directionsResponse: DirectionsResponse){
-        val routes = directionsResponse.routes()
-        if (routes.isNotEmpty()) {
-            val route = routes[0]
-            if (!isNavigating) {
-                val distance = route.distance().toString()
-                val duration = TimeUnit.SECONDS.toMinutes(route.duration()?.toLong()!!).toString()
-                routeLayer.setProperties(visibility(VISIBLE))
-                bottomSheetBinding.distance = getString(R.string.route_distance, duration, distance)
-                bottomSheetBinding.hint?.visibility = View.GONE
-                bottomSheetBinding.routeDetails?.visibility = View.VISIBLE
-                bottomSheetBinding.startNav?.isEnabled = gpsEnabled
+    private fun setRoute(route: DirectionsRoute){
+        if (!viewModel.isNavigating()) {
+            currentRoute = route
+            val duration = with(route.duration()) {
+                if (this != null)  TimeUnit.SECONDS.toMinutes(this.toLong()).toString() else ""
             }
+            val distance = route.distance().toString()
+            routeLayer.setProperties(visibility(VISIBLE))
+            viewModel.distance = getString(R.string.route_distance, duration, distance)
+        }
 
-            route.geometry()?.let {
-                val lineString = LineString.fromPolyline(it, Constants.PRECISION_6)
-                routeSource.setGeoJson(lineString)
-            }
+        route.geometry()?.let {
+            val lineString = LineString.fromPolyline(it, Constants.PRECISION_6)
+            routeSource.setGeoJson(lineString)
         }
     }
 }

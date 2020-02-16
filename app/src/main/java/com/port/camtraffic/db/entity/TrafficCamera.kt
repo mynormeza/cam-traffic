@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 import com.google.gson.JsonObject
 
 @Entity(tableName = "traffic_cameras")
-class TrafficCamera (
+data class TrafficCamera (
     @PrimaryKey val id: String,
     val direction: String,
     val image: String,
