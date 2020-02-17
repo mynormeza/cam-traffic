@@ -5,4 +5,18 @@
     <string name="data_sync">Data Synced</string>
 <!--    Preferences-->
     <string name="preferences">com.din.app.cam_traffic_preferences</string>
+
+<!--    Map-->
+    <string name="directions">Directions</string>
+    <string name="start">Start</string>
+    <string name="finish">Finish</string>
+    <string name="nav_hint">Choose starting traffic camera</string>
+    <string name="route_distance">%1$smin (%2$sm)</string>
+    <string name="current_location">Your location</string>
+    <string name="navigating">you are navigating</string>
+    <string name="explain_permission">In order to see your current location you would need to provide the required permission</string>
+    <string name="permission">You need to provide location permissions.</string>
+    <string name="origin_hint">Choose starting traffic camera</string>
+    <string name="empty"> </string>
+    <string name="origin_invalid">The origin point must be different than the destination</string>
 </resources>

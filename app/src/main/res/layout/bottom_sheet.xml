@@ -4,10 +4,10 @@
     xmlns:tools="http://schemas.android.com/tools">
     <data>
         <variable
-            name="poi"
-            type="com.port.camtraffic.db.entity.TrafficCamera" />
+            name="viewmodel"
+            type="com.port.camtraffic.ui.main.MainViewModel" />
     </data>
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <FrameLayout
         android:id="@+id/bottom_sheet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -15,49 +15,121 @@
         android:orientation="vertical"
         app:behavior_hideable="false"
         app:behavior_peekHeight="0dp"
-        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
-        >
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/poi_details"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/default_margin"
+            tools:visibility="@{viewmodel.poiDetailsVisibility}">
+
+            <TextView
+                android:id="@+id/poi_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="@dimen/global_sm_separator"
+                android:text="@{viewmodel.destination.title}"
+                android:textSize="@dimen/title_details"
+                android:textStyle="bold"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintBottom_toTopOf="@+id/poi_description"
+                app:layout_constraintEnd_toStartOf="@+id/poiImage"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="Titulo" />
+
+            <TextView
+                android:id="@+id/poi_description"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@{viewmodel.destination.description}"
+                android:paddingTop="@dimen/global_sm_separator"
+                android:paddingBottom="@dimen/global_sm_separator"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintBottom_toTopOf="@+id/poi_region"
+                app:layout_constraintEnd_toStartOf="@+id/poiImage"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/poi_title"
+                tools:text="Description example sssssssssssssssssssssssssssssssssss" />
+
+            <TextView
+                android:id="@+id/poi_region"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="@dimen/global_sm_separator"
+                android:paddingBottom="@dimen/global_sm_separator"
+                android:text="@{viewmodel.destination.region}"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/poi_description"
+                tools:text="Region"/>
+
+            <ImageView
+                android:id="@+id/poiImage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constrainedHeight="true"
+                app:layout_constraintBottom_toBottomOf="@+id/poi_region"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/poi_title"
+                app:srcCompat="@drawable/mapbox_compass_icon" />
+
+            <Button
+                android:id="@+id/poiDirections"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/global_sm_separator"
+                android:text="@string/directions"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/poi_region" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <TextView
-            android:id="@+id/poi_title"
+            android:id="@+id/hint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@{poi.title}"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/poi_description"
-            android:layout_width="wrap_content"
+            android:padding="@dimen/default_margin"
+            android:textStyle="bold"
+            android:text="@string/nav_hint"
+            android:visibility="@{viewmodel.routeHintVisibity}"/>
+        <LinearLayout
+            android:id="@+id/route_details"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@{poi.description}"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/poi_title" />
-        <TextView
-            android:id="@+id/poi_region"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@{poi.region}"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/poi_description" />
-
-        <ImageView
-            android:id="@+id/poiImage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/mapbox_compass_icon" />
-
+            android:padding="@dimen/default_margin"
+            android:visibility="@{viewmodel.routeDetailsVisibility}"
+            tools:visibility="visible">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@{viewmodel.destination.title}"
+                tools:text="TESTI"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@{viewmodel.distance}"
+                tools:text="TEST2"/>
+            <Button
+                android:id="@+id/start_nav"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/start"
+                android:enabled="@{viewmodel.startBtnEnabled}"
+                android:layout_gravity="center_horizontal"/>
+        </LinearLayout>
         <Button
-            android:id="@+id/button"
+            android:id="@+id/finish"
+            android:layout_margin="@dimen/default_margin"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Button"
-            app:layout_constraintTop_toBottomOf="@id/poi_description"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            android:text="@string/finish"
+            android:layout_gravity="center_horizontal"
+            android:visibility="@{viewmodel.navigatingVisibility}"/>
+    </FrameLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

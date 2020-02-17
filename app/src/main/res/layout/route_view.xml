@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <data>
+        <import
+            alias="R"
+            type="com.port.camtraffic.R" />
+        <import type="android.view.View"/>
+        <variable
+            name="viewmodel"
+            type="com.port.camtraffic.ui.main.MainViewModel" />
+    </data>
+    <FrameLayout
+        android:id="@+id/route_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <LinearLayout
+            android:id="@+id/route_form"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="@{viewmodel.navigatingVisibility != View.VISIBLE ? View.VISIBLE : View.GONE}"
+            tools:visibility="visible">
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                startIcon="@{viewmodel.originString == null ? R.drawable.ic_my_location : R.drawable.ic_location_on }">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_origin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@{viewmodel.originString.length() == 0 ? @string/origin_hint : @string/empty}"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:inputType="none"
+                    android:text="@{viewmodel.originString ?? @string/current_location }"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:startIconTint="@color/redMarker"
+                app:startIconDrawable="@drawable/ic_location_on">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_destination"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:text="@{viewmodel.destination.title}"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+        <TextView
+            android:id="@+id/tv_active_route"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/navigating"
+            android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Title"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:visibility="@{viewmodel.navigatingVisibility}"
+            android:layout_gravity="center_horizontal|center_vertical" />
+    </FrameLayout>
+</layout>
