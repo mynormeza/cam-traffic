@@ -21,7 +21,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="@dimen/default_margin"
-            tools:visibility="@{viewmodel.poiDetailsVisibility}">
+            android:visibility="@{viewmodel.poiDetailsVisibility}"
+            tools:visibility="gone">
 
             <TextView
                 android:id="@+id/poi_title"
@@ -95,7 +96,8 @@
             android:padding="@dimen/default_margin"
             android:textStyle="bold"
             android:text="@string/nav_hint"
-            android:visibility="@{viewmodel.routeHintVisibity}"/>
+            android:visibility="@{viewmodel.routeHintVisibity}"
+            tools:visibility="gone"/>
         <LinearLayout
             android:id="@+id/route_details"
             android:orientation="vertical"
@@ -129,7 +131,8 @@
             android:layout_height="wrap_content"
             android:text="@string/finish"
             android:layout_gravity="center_horizontal"
-            android:visibility="@{viewmodel.navigatingVisibility}"/>
+            android:visibility="@{viewmodel.navigatingVisibility}"
+            tools:visibility="gone"/>
     </FrameLayout>
 
 </layout>

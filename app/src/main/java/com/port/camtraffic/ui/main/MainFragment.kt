@@ -12,12 +12,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.widget.Toolbar
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import androidx.transition.TransitionManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
@@ -109,7 +111,6 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         routeViewBinding = DataBindingUtil.bind(toolbar.findViewById(R.id.route_view))!!
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout)
 
-
         mapView = root.findViewById(R.id.map_view)
         mapView?.onCreate(savedInstanceState)
         mapView?.getMapAsync(this)
@@ -133,8 +134,9 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         }
         bottomSheetBinding.finish.setOnClickListener {
             routeNavigation.removeProgressChangeListener(null)
-            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
             clearAll()
+            bottomSheetBinding.executePendingBindings()
+            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
         }
         bottomSheetBinding.poiDirections.setOnClickListener {
             directionsClick()
@@ -149,7 +151,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
             }
         })
 
-        viewModel.syncState.observe(this, Observer {
+        viewModel.syncState.observe(viewLifecycleOwner, Observer {
             if (it){
                 context?.toast(getString(R.string.data_sync))
             } else {
@@ -221,8 +223,9 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
 
     override fun onOptionsItemSelected(item: MenuItem)= when(item.itemId){
         android.R.id.home -> {
-            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
             clearAll()
+            bottomSheetBinding.executePendingBindings()
+            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
             true
         }
         else -> super.onOptionsItemSelected(item)
@@ -315,6 +318,8 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         }
 
         if (bottomSheetBehavior.state != BottomSheetBehavior.STATE_EXPANDED) {
+            viewModel.routeState = RouteState.POI_DETAILS
+            bottomSheetBinding.executePendingBindings()
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
         }
     }

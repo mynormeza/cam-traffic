@@ -79,6 +79,9 @@ class MainViewModel @Inject constructor(
                 }
                 RouteState.POI_DETAILS -> {
                     poiDetailsVisibility = View.VISIBLE
+                }
+                RouteState.NONE -> {
+                    poiDetailsVisibility = View.GONE
                     navigatingVisibility = View.GONE
                     routeDetailsVisibility = View.GONE
                     routeHintVisibity = View.GONE
@@ -88,7 +91,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun clearRoute() {
-        routeState = RouteState.POI_DETAILS
+        routeState = RouteState.NONE
         origin = null
         destination = null
         destinationCircle = null

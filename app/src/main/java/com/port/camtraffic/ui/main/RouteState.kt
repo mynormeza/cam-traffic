@@ -5,5 +5,6 @@ enum class RouteState {
     POI_DETAILS,
     GPS_PRE_ROUTE,
     NO_GPS_ROUTE,
-    NAVIGATING
+    NAVIGATING,
+    NONE
 }
