@@ -1,37 +1,29 @@
 package com.port.camtraffic.ui.main
 
+import android.animation.LayoutTransition
 import android.content.Context
 import android.graphics.Color
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
+import android.view.*
 import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.widget.Toolbar
-import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import androidx.transition.TransitionManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.mapbox.android.core.permissions.PermissionsListener
-import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.api.directions.v5.models.DirectionsResponse
 import com.mapbox.api.directions.v5.models.DirectionsRoute
 import com.mapbox.core.constants.Constants
 import com.mapbox.geojson.*
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.location.LocationComponent
-import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions
-import com.mapbox.mapboxsdk.location.modes.CameraMode
-import com.mapbox.mapboxsdk.location.modes.RenderMode
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
@@ -48,10 +40,18 @@ import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute
 import com.mapbox.services.android.navigation.v5.routeprogress.ProgressChangeListener
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress
+import com.mapbox.mapboxsdk.maps.widgets.CompassView
+import android.view.ViewGroup
+import androidx.core.text.HtmlCompat
+import androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY
+import com.bumptech.glide.Glide
+import com.mapbox.mapboxsdk.R as RMB
 import com.port.camtraffic.R
 import com.port.camtraffic.databinding.BottomSheetBinding
 import com.port.camtraffic.databinding.RouteViewBinding
 import com.port.camtraffic.db.entity.TrafficCamera
+import com.port.camtraffic.extensions.setFullScreen
+import com.port.camtraffic.extensions.showOnlyStatusBar
 import com.port.camtraffic.extensions.toClassObject
 import com.port.camtraffic.extensions.toast
 import com.port.camtraffic.utils.FactoryFunctions.toTrafficCamera
@@ -63,19 +63,24 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callback<DirectionsResponse>, ProgressChangeListener {
+class MainFragment : Fragment(), OnMapReadyCallback, Callback<DirectionsResponse>,
+    ProgressChangeListener {
 
     companion object{
         const val ROUTE_SOURCE_ID = "route-source"
         const val ROUTE_LAYER_ID = "route-layer"
     }
 
+    interface OnRequestLocation {
+        fun onEnableLocation(mapboxMap: MapboxMap): LocationComponent?
+    }
+
     @Inject lateinit var factory: ViewModelProvider.Factory
+    private lateinit var callback: OnRequestLocation
     private val viewModel: MainViewModel by viewModels { factory }
     private var mapView: MapView? = null
     private lateinit var mapboxMap: MapboxMap
     private lateinit var locationManager: LocationManager
-    private lateinit var permissionManager: PermissionsManager
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<FrameLayout>
     private lateinit var circleManager: CircleManager
     private lateinit var bottomSheetBinding: BottomSheetBinding
@@ -83,19 +88,21 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     private lateinit var toolbar: Toolbar
     private lateinit var routeSource: GeoJsonSource
     private lateinit var routeLayer: LineLayer
-    private lateinit var locationComponent: LocationComponent
+    private var locationComponent: LocationComponent? = null
     private lateinit var routeNavigation: MapboxNavigation
+    private lateinit var bottomSheetLayout: FrameLayout
+    //TODO: Current location is not initialize when cross sea location to a destination
     private lateinit var currentRoute: DirectionsRoute
     private var gpsEnabled = false
 
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
         super.onAttach(context)
+        callback = context as OnRequestLocation
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true)
         locationManager = activity?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         routeNavigation = MapboxNavigation(context!!, getString(R.string.mapbox_access_token))
     }
@@ -105,11 +112,13 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         savedInstanceState: Bundle?
     ): View? {
         val root = inflater.inflate(R.layout.main_fragment, container, false)
-        val bottomSheetLayout = root.findViewById<FrameLayout>(R.id.bottom_sheet)
+        bottomSheetLayout = root.findViewById(R.id.bottom_sheet)
         toolbar = activity?.findViewById(R.id.toolbar)!!
         bottomSheetBinding = BottomSheetBinding.bind(bottomSheetLayout)
         routeViewBinding = DataBindingUtil.bind(toolbar.findViewById(R.id.route_view))!!
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout)
+        (routeViewBinding.root as ViewGroup).layoutTransition
+            .enableTransitionType(LayoutTransition.CHANGING)
 
         mapView = root.findViewById(R.id.map_view)
         mapView?.onCreate(savedInstanceState)
@@ -119,21 +128,29 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val menuIcon = ContextCompat.getDrawable(context!!, R.drawable.ic_close)
-        toolbar.navigationIcon = menuIcon
         toolbar.visibility = View.GONE
         routeViewBinding.viewmodel = viewModel
         routeViewBinding.executePendingBindings()
         bottomSheetBinding.viewmodel = viewModel
         bottomSheetBinding.executePendingBindings()
 
+        routeViewBinding.btnClose.setOnClickListener {
+            clearAll()
+            bottomSheetBinding.executePendingBindings()
+            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+        }
+
         bottomSheetBinding.startNav.setOnClickListener {
             routeNavigation.addProgressChangeListener(this)
             routeNavigation.startNavigation(currentRoute)
             viewModel.routeState = RouteState.NAVIGATING
+            val blueColor = ContextCompat.getColor(this.context!!,R.color.light_blue)
+            activity?.window?.apply {
+                statusBarColor = blueColor
+            }
+            toolbar.setBackgroundColor(blueColor)
         }
         bottomSheetBinding.finish.setOnClickListener {
-            routeNavigation.removeProgressChangeListener(null)
             clearAll()
             bottomSheetBinding.executePendingBindings()
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
@@ -161,33 +178,11 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
+        setMarginToCompass()
         this.mapboxMap = mapboxMap
         viewModel.poiList.observe(this, Observer {
             setPois(it)
         })
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        permissionManager.onRequestPermissionsResult(requestCode,permissions,grantResults)
-    }
-
-    override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
-        context?.toast(getString(R.string.explain_permission))
-    }
-
-    override fun onPermissionResult(granted: Boolean) {
-        if (granted) {
-            mapboxMap.getStyle {
-                enableLocation(it)
-            }
-        }else {
-            context?.toast(getString(R.string.permission))
-            activity?.finish()
-        }
     }
 
     override fun onStart() {
@@ -219,16 +214,6 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         super.onDestroyView()
         mapView?.onDestroy()
 
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem)= when(item.itemId){
-        android.R.id.home -> {
-            clearAll()
-            bottomSheetBinding.executePendingBindings()
-            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
-            true
-        }
-        else -> super.onOptionsItemSelected(item)
     }
 
     override fun onProgressChange(location: Location?, routeProgress: RouteProgress?) {
@@ -266,7 +251,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
         }
 
         mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
-            enableLocation(style)
+            locationComponent = callback.onEnableLocation(mapboxMap)
             circleManager =  CircleManager(mapView!!, mapboxMap, style)
 
             circleManager.addClickListener {
@@ -306,13 +291,20 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
             }
             viewModel.destinationCircle = clickedCircle
             viewModel.destination = clickedCircle.data?.asJsonObject?.toClassObject(::toTrafficCamera)
+            val loadImageUrl = viewModel.destination?.image
+            if (!loadImageUrl.isNullOrEmpty()) {
+                Glide.with(this)
+                    .load(loadImageUrl)
+                    .placeholder(R.drawable.ic_image)
+                    .into(bottomSheetBinding.poiImage)
+            }
         }
 
         clickedCircle.circleRadius = 12f
         circleManager.update(clickedCircle)
 
         viewModel.origin?.let {
-            viewModel.routeState = RouteState.NO_GPS_ROUTE
+            viewModel.routeState = RouteState.LOADING
             val ori=  Point.fromLngLat(it.longitude.toDouble(), it.latitude.toDouble())
             getRoute(ori)
         }
@@ -345,32 +337,23 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
                     getRoute(it)
                 }
                 routeLayer.setProperties(visibility(VISIBLE))
-                viewModel.routeState = RouteState.GPS_PRE_ROUTE
+                viewModel.routeState = RouteState.LOADING
             }else {
                 viewModel.routeState = RouteState.NO_GPS_PRE_ROUTE
             }
         }
         toolbar.visibility = View.VISIBLE
-    }
-
-    private fun enableLocation(loadedStyle: Style) {
-        if (PermissionsManager.areLocationPermissionsGranted(context)){
-            locationComponent = mapboxMap.locationComponent
-            context?.let {
-                locationComponent.activateLocationComponent(LocationComponentActivationOptions.builder(it, loadedStyle).build())
-            }
-            locationComponent.isLocationComponentEnabled = true
-            locationComponent.cameraMode = CameraMode.TRACKING
-            locationComponent.renderMode = RenderMode.NORMAL
-        }else {
-            permissionManager = PermissionsManager(this)
-            permissionManager.requestLocationPermissions(activity)
-        }
+        activity?.showOnlyStatusBar()
     }
 
     private fun clearAll() {
-        routeNavigation.stopNavigation()
+        activity?.setFullScreen()
         toolbar.visibility = View.GONE
+        if (viewModel.isNavigating()) {
+            routeNavigation.stopNavigation()
+            routeNavigation.removeProgressChangeListener(this)
+            toolbar.setBackgroundColor(ContextCompat.getColor(context!!, R.color.color_primary))
+        }
         viewModel.originCircle?.let {
             it.circleRadius = 8f
             circleManager.update(it)
@@ -384,25 +367,47 @@ class MainFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Callba
     }
 
     private fun getCurrentLocation(): Point? {
-        return locationComponent.lastKnownLocation?.let {
+        return locationComponent?.lastKnownLocation?.let {
             Point.fromLngLat(it.longitude, it.latitude)
         }
     }
 
     private fun setRoute(route: DirectionsRoute){
-        if (!viewModel.isNavigating()) {
+        if (viewModel.isLoadingState()) {
             currentRoute = route
             val duration = with(route.duration()) {
                 if (this != null)  TimeUnit.SECONDS.toMinutes(this.toLong()).toString() else ""
             }
             val distance = route.distance().toString()
             routeLayer.setProperties(visibility(VISIBLE))
-            viewModel.distance = getString(R.string.route_distance, duration, distance)
+            val text = getString(R.string.route_distance, duration, distance)
+            viewModel.distance = HtmlCompat.fromHtml(text, FROM_HTML_MODE_LEGACY)
+            viewModel.routeState = if (gpsEnabled) {
+                RouteState.GPS_ROUTE
+            } else {
+                RouteState.NO_GPS_ROUTE
+            }
         }
 
         route.geometry()?.let {
             val lineString = LineString.fromPolyline(it, Constants.PRECISION_6)
             routeSource.setGeoJson(lineString)
         }
+    }
+
+    private fun setMarginToCompass() {
+        ViewCompat.setOnApplyWindowInsetsListener(activity?.findViewById(R.id.app_container)!!) { _, insets ->
+            val menu = activity?.findViewById<CompassView>(RMB.id.compassView)
+            menu?.let {
+                val menuLayoutParams = menu.layoutParams as ViewGroup.MarginLayoutParams
+                menuLayoutParams.setMargins(0, insets.systemWindowInsetTop, 0, 0)
+                menu.layoutParams = menuLayoutParams
+            }
+            insets.consumeSystemWindowInsets()
+        }
+    }
+
+    fun updateLocationComponent(locationComponent: LocationComponent?) {
+        this.locationComponent = locationComponent
     }
 }

@@ -14,17 +14,37 @@
     <FrameLayout
         android:id="@+id/route_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <LinearLayout
+        android:layout_height="match_parent"
+        android:animateLayoutChanges="true">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/route_form"
-            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingStart="0dp"
+            android:paddingEnd="@dimen/default_margin"
+            android:paddingBottom="@dimen/default_margin"
             android:visibility="@{viewmodel.navigatingVisibility != View.VISIBLE ? View.VISIBLE : View.GONE}"
             tools:visibility="visible">
+
+            <ImageButton
+                android:id="@+id/btn_close"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:background="@android:color/transparent"
+                android:paddingStart="0dp"
+                android:paddingEnd="@dimen/global_sm_separator"
+                app:srcCompat="@drawable/ic_close"
+                app:layout_constraintBottom_toBottomOf="@+id/til_origin"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
             <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
+                android:id="@+id/til_origin"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/btn_close"
                 startIcon="@{viewmodel.originString == null ? R.drawable.ic_my_location : R.drawable.ic_location_on }">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -33,15 +53,20 @@
                     android:layout_height="wrap_content"
                     android:hint="@{viewmodel.originString.length() == 0 ? @string/origin_hint : @string/empty}"
                     android:focusable="false"
+                    android:textSize="12sp"
                     android:focusableInTouchMode="false"
                     android:inputType="none"
                     android:text="@{viewmodel.originString ?? @string/current_location }"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
+                android:id="@+id/til_destination"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                app:startIconTint="@color/redMarker"
+                app:startIconTint="@color/red_marker"
+                app:layout_constraintStart_toEndOf="@+id/btn_close"
+                app:layout_constraintTop_toBottomOf="@+id/til_origin"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:startIconDrawable="@drawable/ic_location_on">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -49,19 +74,23 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="none"
+                    android:textSize="12sp"
                     android:focusable="false"
                     android:focusableInTouchMode="false"
                     android:text="@{viewmodel.destination.title}"/>
             </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
         <TextView
             android:id="@+id/tv_active_route"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:paddingTop="@dimen/global_lg_margin"
+            android:paddingBottom="@dimen/global_lg_margin"
             android:text="@string/navigating"
             android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Title"
             android:textStyle="bold"
             android:textAllCaps="true"
+            android:textColor="@android:color/white"
             android:visibility="@{viewmodel.navigatingVisibility}"
             android:layout_gravity="center_horizontal|center_vertical" />
     </FrameLayout>
