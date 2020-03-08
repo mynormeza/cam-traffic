@@ -1,4 +1,22 @@
 <resources>
+    <string name="mapbox_access_token">pk.eyJ1IjoibW1lemEiLCJhIjoiY2p2ZmZpNTJ0MjF1ajN5dGRvYzd6bjlhbyJ9.pfcd_GspX5N5gj8eF8v41w</string>
     <string name="app_name">CamTraffic</string>
     <string name="action_settings">Settings</string>
+    <string name="data_sync">Data Synced</string>
+    <!--    Preferences-->
+    <string name="preferences">com.din.app.cam_traffic_preferences</string>
+
+    <!--    Map-->
+    <string name="directions">Directions</string>
+    <string name="start">Start</string>
+    <string name="finish">Finish</string>
+    <string name="nav_hint">Choose starting traffic camera</string>
+    <string name="route_distance">&lt;b>%1$smin&lt;/b> (%2$sm)</string>
+    <string name="current_location">Your location</string>
+    <string name="navigating">you are navigating</string>
+    <string name="explain_permission">In order to see your current location you would need to provide the required permission</string>
+    <string name="permission">You need to provide location permissions.</string>
+    <string name="origin_hint">Choose starting traffic camera</string>
+    <string name="empty"> </string>
+    <string name="origin_invalid">The origin point must be different than the destination</string>
 </resources>

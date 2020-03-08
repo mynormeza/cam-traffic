@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/navigation"
+    app:startDestination="@id/main_fragment">
+
+    <fragment
+        android:id="@+id/main_fragment"
+        android:name="com.port.camtraffic.ui.main.MainFragment"
+        android:label="MainFragment" />
+    <fragment
+        android:id="@+id/sync_fragment"
+        android:name="com.port.camtraffic.ui.sync.SyncFragment"
+        android:label="sync_fragment"
+        tools:layout="@layout/sync_fragment" />
+</navigation>
