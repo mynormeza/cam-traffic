@@ -1,17 +1,16 @@
 package com.port.camtraffic.ui.main
 
+import android.text.Spanned
 import android.view.View
 import androidx.databinding.Bindable
 import androidx.databinding.library.baseAdapters.BR
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModel
 import com.mapbox.mapboxsdk.plugins.annotation.Circle
 import com.port.camtraffic.binding.BindableProperty
 import com.port.camtraffic.binding.ObservableViewModel
 import com.port.camtraffic.db.entity.TrafficCamera
 import com.port.camtraffic.repositories.LocalRepository
 import com.port.camtraffic.utils.SyncManager
-import timber.log.Timber
 import javax.inject.Inject
 import kotlin.properties.Delegates
 
@@ -23,8 +22,6 @@ class MainViewModel @Inject constructor(
     val syncState: LiveData<Boolean> = syncManager.syncState
     var originCircle: Circle? = null
     var destinationCircle: Circle? = null
-
-
 
     @get:Bindable
     var origin: TrafficCamera? by BindableProperty(null, this, BR.origin)
@@ -45,10 +42,13 @@ class MainViewModel @Inject constructor(
     var routeHintVisibity by BindableProperty(View.GONE, this, BR.routeHintVisibity)
 
     @get:Bindable
+    var loadingVisibility by BindableProperty(View.GONE, this, BR.loadingVisibility)
+
+    @get:Bindable
     var startBtnEnabled by BindableProperty(true, this, BR.startBtnEnabled)
 
     @get:Bindable
-    var distance by BindableProperty("", this, BR.distance)
+    var distance by BindableProperty<Spanned?>(null, this, BR.distance)
 
     @get:Bindable
     var originString: String? by BindableProperty(null, this, BR.originString)
@@ -56,20 +56,25 @@ class MainViewModel @Inject constructor(
     var routeState by Delegates.observable(RouteState.POI_DETAILS) { _, oldValue, newValue ->
         if (oldValue != newValue) {
             when(newValue) {
+                RouteState.LOADING -> {
+                    loadingVisibility = View.VISIBLE
+                    poiDetailsVisibility = View.GONE
+                    routeHintVisibity = View.GONE
+                }
                 RouteState.NO_GPS_PRE_ROUTE -> {
                     routeHintVisibity = View.VISIBLE
                     poiDetailsVisibility = View.GONE
                     originString = ""
                 }
                 RouteState.NO_GPS_ROUTE -> {
-                    routeHintVisibity = View.GONE
+                    loadingVisibility = View.GONE
                     routeDetailsVisibility = View.VISIBLE
                     startBtnEnabled = false
                     originString = origin?.title
                 }
-                RouteState.GPS_PRE_ROUTE -> {
+                RouteState.GPS_ROUTE -> {
+                    loadingVisibility = View.GONE
                     routeDetailsVisibility = View.VISIBLE
-                    poiDetailsVisibility = View.GONE
                     startBtnEnabled = true
                     originString = null
                 }
@@ -99,6 +104,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun isNavigating() = routeState == RouteState.NAVIGATING
+
+    fun isLoadingState() = routeState == RouteState.LOADING
 
     fun needsOriginPoint() = routeState == RouteState.NO_GPS_PRE_ROUTE
 
