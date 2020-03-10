@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector, MainFragment.OnReq
     private fun visibilityNavElements(navController: NavController) {
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
-                R.id.sync_fragment -> {
+                R.id.sync_fragment, R.id.main_fragment -> {
                     toolbar.visibility = View.GONE
                 }
                 else -> {

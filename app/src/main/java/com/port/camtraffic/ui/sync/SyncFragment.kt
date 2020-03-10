@@ -11,6 +11,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.port.camtraffic.R
+import com.port.camtraffic.extensions.toast
 import dagger.android.support.AndroidSupportInjection
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -39,7 +40,7 @@ class SyncFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel.syncState.observe(this, Observer {
+        viewModel.syncState.observe(viewLifecycleOwner, Observer {
             if (it) {
                 findNavController().popBackStack()
             } else {
@@ -49,6 +50,9 @@ class SyncFragment : Fragment() {
                         if (error != null){
                             Timber.e(error)
                             return@subscribe
+                        }
+                        if (syncState){
+                            context?.toast(getString(R.string.data_sync))
                         }
                         viewModel.setSyncState(syncState)
                     }

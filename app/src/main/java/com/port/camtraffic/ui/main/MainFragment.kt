@@ -128,7 +128,6 @@ class MainFragment : Fragment(), OnMapReadyCallback, Callback<DirectionsResponse
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        toolbar.visibility = View.GONE
         routeViewBinding.viewmodel = viewModel
         routeViewBinding.executePendingBindings()
         bottomSheetBinding.viewmodel = viewModel
@@ -169,9 +168,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, Callback<DirectionsResponse
         })
 
         viewModel.syncState.observe(viewLifecycleOwner, Observer {
-            if (it){
-                context?.toast(getString(R.string.data_sync))
-            } else {
+            if (!it){
                 findNavController().navigate(R.id.sync_fragment)
             }
         })
@@ -180,6 +177,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, Callback<DirectionsResponse
     override fun onMapReady(mapboxMap: MapboxMap) {
         setMarginToCompass()
         this.mapboxMap = mapboxMap
+        this.mapboxMap.setStyle(Style.MAPBOX_STREETS)
         viewModel.poiList.observe(this, Observer {
             setPois(it)
         })
@@ -250,7 +248,7 @@ class MainFragment : Fragment(), OnMapReadyCallback, Callback<DirectionsResponse
             )
         }
 
-        mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
+        mapboxMap.getStyle { style ->
             locationComponent = callback.onEnableLocation(mapboxMap)
             circleManager =  CircleManager(mapView!!, mapboxMap, style)
 
