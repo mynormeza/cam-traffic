@@ -2,7 +2,7 @@
 This is part of my portfolio’s apps showcase. See it [here](https://mynormeza92.gitlab.io/my-career/).
 
 ## Disclaimer
-You might find this project as an over engineered solution for a simple purpose, but this was made intentionally in this way to show my skills.
+You might find this project as an over engineered solution for a simple "problem", but this was made intentionally in this way to show my skills.
 
 ## Technical details
 Even though the application is pretty simple regarding to features, technically speaking it can be a robust application, when building it I tried to follow a scalable architecture using some of the cutting edge technologies out there. 
