@@ -21,6 +21,7 @@ For specific functionalities of the application like the state of a route, I har
 *  Retrofit 2 for REST API communication
 *  RxJava 2 for REST API responses
 *  Room for SQLite databases
+*  Navigation Component
 *  Android Data Binding
 *  ViewModel
 *  LiveData
